@@ -13,4 +13,8 @@
 .DS_Store
 .vercel
 .env*.local
+.idea
+
+# Make sure the config is correct for other package managers as well
+node_modules
 apps/frontend/.env

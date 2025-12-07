@@ -2,17 +2,18 @@ import dict from "@shared/dictionary.json";
 import { type DropDownOption} from "@shared/drop_down";
 import DropDown from "./_client";
 import { cache } from 'react';
-import getSdk from "@/sdk";
-import { getServerContext } from "@remkoj/optimizely-cms-react/rsc";
+import { getSdk } from "@/gql/client";
+import { createClient, type IOptiGraphClient } from "@remkoj/optimizely-graph-client";
+import { type GenericContext } from "@remkoj/optimizely-cms-react/rsc";
 
 export type LanguageSwitcherProps = {
-
+    ctx?: GenericContext
 } & JSX.IntrinsicElements['div']
 
-export async function LanguageSwitcher ({ ...divProps }: LanguageSwitcherProps)
+export async function LanguageSwitcher ({ ctx, ...divProps }: LanguageSwitcherProps)
 {
-    const locales = await getLocales()
-    const { locale: currentLocale = "en" } = getServerContext()
+    const { locale: currentLocale = "en", client } = ctx ?? { locale: 'en' }
+    const locales = await getLocales(false, client)
 
     // If there're less the two locales, don't show the picker
     if (locales.length < 2)
@@ -35,8 +36,16 @@ export default LanguageSwitcher
  * @param       includeSystem   Set this to true to include the system locales (ALL and NEUTRAL)
  * @returns     The list of available locales
  */
-const getLocales = cache(async (includeSystem: boolean = false) => {
-    const sdk = getSdk();
-    const locales = (await sdk.getLocales())?.schema?.types?.filter(x => x.kind == "ENUM" && x.name?.endsWith("Locales"))?.map(x => (x.enumValues ?? []).map(y => y.name))?.flat()?.filter((v,i,a) => i <= a.indexOf(v)) ?? []
+const getLocales = cache(async (includeSystem: boolean = false, client?: IOptiGraphClient) => {
+    const currentClient = client ?? createClient(undefined, undefined, {
+        nextJsFetchDirectives: true,
+        cache: true,
+        queryCache: true
+    });
+    const sdk = getSdk(currentClient);
+    const locales = (await sdk.getLocales().catch((e: { response: { code: string, status: number, system: { message: string, auth: string} }}) => {
+        console.error(`❌ [Optimizely Graph] [Error] ${e.response.code} ${e.response.system.message} ${e.response.system.auth}`)
+        return undefined
+    }))?.schema?.types?.filter(x => x.kind == "ENUM" && x.name?.endsWith("Locales"))?.map(x => (x.enumValues ?? []).map(y => y.name))?.flat()?.filter((v,i,a) => i <= a.indexOf(v)) ?? []
     return includeSystem ? locales : locales.filter(x => x != 'ALL' && x != 'NEUTRAL')
 })

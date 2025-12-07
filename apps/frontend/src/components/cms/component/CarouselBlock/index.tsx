@@ -2,26 +2,26 @@ import { type CmsComponent } from "@remkoj/optimizely-cms-react";
 import { type CarouselBlockDataFragment, CarouselBlockDataFragmentDoc } from "@gql/graphql"
 import dynamic from "next/dynamic";
 import "server-only";
-import { CmsContentArea, CmsEditable, getServerContext } from "@remkoj/optimizely-cms-react/rsc";
+import { CmsContentArea, CmsEditable } from "@remkoj/optimizely-cms-react/rsc";
 
 const CarouselBlockComponent = dynamic(() => import("./_carousel-block"), { ssr: true });
 
-export const CarouselBlock: CmsComponent<CarouselBlockDataFragment> = async ({ data, contentLink }) => {
-  const { inEditMode } = getServerContext()
+export const CarouselBlock: CmsComponent<CarouselBlockDataFragment> = async ({ data, contentLink, ctx }) => {
   const items = data?.CarouselItemsContentArea || [];
 
   return (
     <CmsEditable as={CarouselBlockComponent}
       cmsId={ contentLink.key }
       data={{ ...data, itemCount: items.length }}
-      inEditMode={inEditMode}
-      contentLink={contentLink}
+      inEditMode={ctx?.inEditMode}
+      contentLink={ contentLink }
+      ctx={ctx}
+      forwardCtx={false}
     >
       <CmsContentArea
         noWrapper
         itemWrapper={{ 
           as: "div",
-          //@ts-expect-error
           style: {
             flex: `0 0 var(--item-width)`,
             width: `var(--item-width)`,
@@ -31,6 +31,7 @@ export const CarouselBlock: CmsComponent<CarouselBlockDataFragment> = async ({ d
           }
         }}
         items={items}
+        ctx={ ctx }
       />
     </CmsEditable>
   );
